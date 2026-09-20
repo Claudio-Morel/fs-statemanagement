@@ -1,49 +1,86 @@
-
 import { create } from 'zustand'
+import anecdoteService from './services/anecdotes'
 
-const anecdotesAtStart = [
-  'If it hurts, do it more often',
-  'Adding manpower to a late software project makes it later!',
-  'The first 90 percent of the code accounts for the first 90 percent of the development time...The remaining 10 percent of the code accounts for the other 90 percent of the development time.',
-  'Any fool can write code that a computer can understand. Good programmers write code that humans can understand.',
-  'Premature optimization is the root of all evil.',
-  'Debugging is twice as hard as writing the code in the first place. Therefore, if you write the code as cleverly as possible, you are, by definition, not smart enough to debug it.'
-]
-
-const getId = () => (100000 * Math.random()).toFixed(0)
-
-const asObject = anecdote => ({
-  content: anecdote,
-  id: getId(),
-  votes: 0
-})
-
-const compareAnecdotes = (anecdoteA, anecdoteB) => {
+const compareAnecdote = (anecdoteA, anecdoteB) => {
   return anecdoteB.votes - anecdoteA.votes
 }
 
-const useAnecdoteStore = create((set) => ({
-  anecdotes: anecdotesAtStart.map(asObject),
+const useAnecdoteStore = create((set, get) => ({
+  anecdotes: [],
   filter: '',
   actions: {
-    addVote: id => set(
-      state => ({
+    addVote: async id => {
+      const anecdote = get().anecdotes.find(n => n.id === id)
+      const updated = { ...anecdote, votes: anecdote.votes + 1 }
+      const updatedAnecdote = await anecdoteService.update(id, updated)
+      useNotificationStore.getState().actions.showNotification(
+        `you voted '${updatedAnecdote.content}'`
+      )
+
+      set(state => ({
         anecdotes: state.anecdotes.map(anecdote =>
-          anecdote.id === id ? { ...anecdote, votes: anecdote.votes + 1 } : anecdote
-        ).toSorted(compareAnecdotes)
-      })
-    ),
-    addAnecdote: content => set(
-      state => ({
-        anecdotes: state.anecdotes.concat(asObject(content)).toSorted(compareAnecdotes)
-      })
-    ),
-    setFilter: value => set(() => ({filter: value})
-    )
-  },
+          anecdote.id === id ? updatedAnecdote : anecdote
+        ).toSorted(compareAnecdote)
+      }))
+    },
+    addAnecdote: async content => {
+      const newAnecdote = await anecdoteService.createNew(content)
+      useNotificationStore.getState().actions.showNotification(
+        `you added '${newAnecdote.content}'`
+      )
+      set(state => ({
+        anecdotes: state.anecdotes.concat(newAnecdote).toSorted(compareAnecdote)
+      }))
+    },
+    eraseAnecdote: async id => {
+      const anecdote = get().anecdotes.find(n => n.id === id)
+
+      if (!anecdote || anecdote.votes > 0) {
+        useNotificationStore.getState().actions.showNotification(
+          `Failed to erase anecdote with id: '${anecdote.id}'`
+        )
+        return
+      }
+
+      await anecdoteService.erase(id)
+      useNotificationStore.getState().actions.showNotification(
+        `you erased '${anecdote.content}'`
+      )
+      set((state) => ({
+        anecdotes: state.anecdotes.filter(anecdote => anecdote.id !== id)
+      }))
+    },
+    setFilter: value => set(() => ({ filter: value })),
+    initialize: async () => {
+      const anecdotes = await anecdoteService.getAll()
+      set(() => ({ anecdotes: anecdotes.toSorted(compareAnecdote) }))
+    },
+  }
 }))
 
-export const useAnecdotes = () => {
+let notificationTimer
+
+const useNotificationStore = create(set => ({
+  notification: null,
+  actions: {
+    showNotification: (message, type) => {
+      clearTimeout(notificationTimer)
+
+      set(() => ({
+        notification: { message: message, type: type }
+      }))
+
+      notificationTimer = setTimeout(() => {
+        clearTimeout(notificationTimer)
+        notificationTimer = undefined
+        set(() => ({notification: null}))
+      }, 5000)
+    }
+  }
+}))
+
+
+export const useAnecdote = () => {
   const anecdotes = useAnecdoteStore((state) => state.anecdotes)
   const filter = useAnecdoteStore((state) => state.filter)
 
@@ -56,6 +93,7 @@ export const useAnecdotes = () => {
 
   return filteredAnecdotes
 }
-
 export const useFilter = () => useAnecdoteStore((state) => state.filter)
-export const useAnecdotesActions = () => useAnecdoteStore((state) => state.actions)
+export const useAnecdoteActions = () => useAnecdoteStore((state) => state.actions)
+export const useNotification = () => useNotificationStore((state) => state.notification)
+export const useNotificationActions = () => useNotificationStore((state) => state.actions)

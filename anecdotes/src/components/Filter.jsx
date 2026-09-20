@@ -1,8 +1,8 @@
-import { useAnecdotesActions } from '../store'
+import { useAnecdoteActions } from '../store'
 
 
 const Filter = () => {
-  const { setFilter } = useAnecdotesActions()
+  const { setFilter } = useAnecdoteActions()
 
   const handleChange = (event) => {
     // the value of the input field is in event.target.value
@@ -15,7 +15,7 @@ const Filter = () => {
 
   return (
     <div style={style}>
-      filter <input onChange={handleChange} />
+      filter <input onChange={handleChange} data-testid='filter'/>
     </div>
   )
 }
