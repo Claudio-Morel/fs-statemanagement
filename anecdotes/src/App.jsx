@@ -1,11 +1,8 @@
-import { useAnecdotes } from "./store"
+import { useAnecdotes, useAnecdotesActions } from "./store"
 
 const App = () => {
   const anecdotes = useAnecdotes()
-
-  const vote = (id) => {
-    console.log("vote", id)
-  }
+  const { addVote } = useAnecdotesActions()
 
   return (
     <div>
@@ -15,7 +12,7 @@ const App = () => {
           <div>{anecdote.content}</div>
           <div>
             has {anecdote.votes}
-            <button onClick={() => vote(anecdote.id)}>vote</button>
+            <button onClick={() => { addVote(anecdote.id); console.log(anecdote.id) }}>vote</button>
           </div>
         </div>
       ))}
