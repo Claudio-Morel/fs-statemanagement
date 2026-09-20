@@ -18,6 +18,10 @@ const asObject = anecdote => ({
   votes: 0
 })
 
+const compareAnecdotes = (anecdoteA, anecdoteB) => {
+  return anecdoteB.votes - anecdoteA.votes
+}
+
 const useAnecdoteStore = create((set) => ({
   anecdotes: anecdotesAtStart.map(asObject),
   actions: {
@@ -25,12 +29,12 @@ const useAnecdoteStore = create((set) => ({
       state => ({
         anecdotes: state.anecdotes.map(anecdote =>
           anecdote.id === id ? { ...anecdote, votes: anecdote.votes + 1} : anecdote
-        )
+        ).toSorted(compareAnecdotes)
       })
     ),
     addAnecdote: content => set(
       state => ({
-        anecdotes: state.anecdotes.concat(asObject(content))
+        anecdotes: state.anecdotes.concat(asObject(content)).toSorted(compareAnecdotes)
       })
     )
   },
